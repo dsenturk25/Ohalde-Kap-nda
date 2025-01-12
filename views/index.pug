@@ -1,0 +1,186 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    link(rel="stylesheet", href="/style.css")
+    title #{title}
+  style(type="text/css").
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 18px;
+        text-align: left;
+      }
+      th, td {
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+      }
+      th {
+        background-color: #f4f4f4;
+      }
+
+    input {
+      padding: 10px;
+      font-size: 20px;
+    }
+
+    img {
+      width: 100px;
+    }
+
+    .input-wrapper {
+      display: flex;
+    }
+    .each-input-wrapper {
+      margin-right: 50px;
+    }
+    .submit-button {
+        text-align: center;
+        width: fit-content;
+        background: linear-gradient(45deg, #32a852, #ffa726);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 10px 15px;
+        font-size: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        margin: 20px 0;
+    }
+    .submit-button:hover {
+        background: linear-gradient(45deg, #28a745, #fb8c00);
+        transform: scale(1.05);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+    }
+    .submit-button:active {
+        transform: scale(0.95);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+  body 
+    .all-main-wrapper
+      img(src="/logo.webp", alt="Ohalde")
+      h1 Fiyat Karşılaştırma Paneli
+      .input-wrapper
+        .each-input-wrapper
+          div Önceki Tarihi Seçin
+          input.each-input(type="date" id="first-date-input")
+        .each-input-wrapper
+          div Sonraki Tarihi Seçin
+          input.each-input(type="date" id="second-date-input" disabled)
+      .submit-button#submit-button Fiyatları Karşılaştır
+      .response-wrapper#response-wrapper 
+        hr
+        h5 
+          span Aşağıda listelenen ürünlerde 
+          span(style="color: red;") fiyat değişmiştir.
+        table
+          thead
+            tr
+              th Ürün
+              th En düşük fiyat değişimi
+              th En yüksek fiyat değişimi
+              th En düşük fiyat fark
+              th En yüksek fiyat fark
+          tbody#tbody
+        hr
+        h5 
+          span Aşağıda listelenen ürünlerde 
+          span(style="color: green;") fiyat değişimi olmamıştır.
+        .no-change-list-wrapper 
+          ul#noChangeList
+  script.
+    const firstDateInput = document.getElementById("first-date-input");
+    const secondDateInput = document.getElementById("second-date-input");
+
+    firstDateInput.addEventListener("change", (e) => {
+      secondDateInput.disabled = false;
+      secondDateInput.min = firstDateInput.value;
+    })
+
+    const submitButton = document.getElementById("submit-button");
+    submitButton.addEventListener("click", (e) => {
+
+      sendRequestToApi(firstDateInput.value, secondDateInput.value);
+    })
+
+    function sendRequestToApi(firstDateValue, secondDateValue) {
+      if (firstDateValue != "" && secondDateValue != "") {
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', '/get-data', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        const data = JSON.stringify({
+          firstDate: firstDateValue,
+          secondDate: secondDateValue
+        });
+        xhr.send(data);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              
+              const responseData = JSON.parse(xhr.responseText);
+
+              const noChangeList = document.getElementById("noChangeList");
+              noChangeList.innerHTML = "";
+              for(let i = 0; i < responseData["noChangeProducts"].length; i++) {
+                const eachProductName = responseData["noChangeProducts"][i];
+              
+                const li = document.createElement("li");
+                li.innerHTML = eachProductName;
+                noChangeList.appendChild(li);
+              }
+
+
+              const tbody = document.getElementById("tbody");
+              tbody.innerHTML = "";
+              for(let i = 0; i < responseData["resultArray"].length; i++) {
+                const eachResultObject = responseData["resultArray"][i];
+              
+                const tr = document.createElement("tr");
+
+                const name = document.createElement("td");
+                name.innerHTML = eachResultObject["name"];
+
+                const min = document.createElement("td");
+                min.innerHTML = eachResultObject["min"];
+
+                const max = document.createElement("td");
+                max.innerHTML = eachResultObject["max"];
+
+                const minChange = document.createElement("td");
+                minChange.innerHTML = eachResultObject["minChange"];
+
+                const maxChange = document.createElement("td");
+                maxChange.innerHTML = eachResultObject["maxChange"];
+
+                tr.appendChild(name);
+                tr.appendChild(min);
+                tr.appendChild(max);
+                tr.appendChild(minChange);
+                tr.appendChild(maxChange);
+
+                tbody.appendChild(tr);
+              }
+
+            } else {
+              
+              console.error('Error:', xhr.status, xhr.statusText);
+            }
+          }
+        };
+
+      }
+    }
+
